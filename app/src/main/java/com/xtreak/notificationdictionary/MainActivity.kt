@@ -28,6 +28,18 @@ import android.widget.*
 import android.widget.TextView.OnEditorActionListener
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.core.view.MenuItemCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -61,14 +73,14 @@ class MainActivity : AppCompatActivity() {
         val sharedPref = applicationContext.getSharedPreferences(
             getString(R.string.preference_file_key), Context.MODE_PRIVATE
         )
-        val default_database_key = getString(R.string.default_database)
-        val selected_language_key = getString(R.string.selected_language)
-        var default_language_value = "en"
-        var default_database_value = "dictionary.db"
-        val selected_theme = "selected_theme"
+        val defaultDatabaseKey = getString(R.string.default_database)
+        val selectedLanguageKey = getString(R.string.selected_language)
+        var defaultLanguageValue = "en"
+        var defaultDatabaseValue = "dictionary.db"
+        val selectedTheme = "selected_theme"
 
-        var selected_language = sharedPref.getString(selected_language_key, "UNSET") as String
-        val theme = sharedPref.getInt(selected_theme, R.style.Theme_NotificationDictionary)
+        var selectedLanguage = sharedPref.getString(selectedLanguageKey, "UNSET") as String
+        val theme = sharedPref.getInt(selectedTheme, R.style.Theme_NotificationDictionary)
 
 
         // https://stackoverflow.com/questions/4212320/get-the-current-language-in-device
@@ -78,46 +90,43 @@ class MainActivity : AppCompatActivity() {
         // better onboarding experience. Example french users on start will have french selected.
         // Current locale might be fr but user might have selected english. In that case check for
         // preference to be UNSET
-        if (selected_language == "UNSET") {
+        if (selectedLanguage == "UNSET") {
             if (current_locale.startsWith(
                     "fr",
                     ignoreCase = true
                 )
             ) {
-                default_language_value = current_locale
-                default_database_value = "dictionary_fr.db"
+                defaultLanguageValue = current_locale
+                defaultDatabaseValue = "dictionary_fr.db"
             } else if (current_locale.startsWith(
                     "de",
                     ignoreCase = true
                 )
             ) {
-                default_language_value = current_locale
-                default_database_value = "dictionary_de.db"
+                defaultLanguageValue = current_locale
+                defaultDatabaseValue = "dictionary_de.db"
             } else if (current_locale.startsWith(
                     "pl",
                     ignoreCase = true
                 )
             ) {
-                default_language_value = current_locale
-                default_database_value = "dictionary_pl.db"
+                defaultLanguageValue = current_locale
+                defaultDatabaseValue = "dictionary_pl.db"
             }
             // Set values here so that
             with(sharedPref.edit()) {
-                putString(default_database_key, default_database_value)
-                putString(selected_language_key, default_language_value)
+                putString(defaultDatabaseKey, defaultDatabaseValue)
+                putString(selectedLanguageKey, defaultLanguageValue)
                 apply()
                 commit()
             }
         }
 
-        selected_language =
-            sharedPref.getString(selected_language_key, default_language_value) as String
-        val database_name =
-            sharedPref.getString(default_database_key, default_database_value) as String
+        selectedLanguage = sharedPref.getString(selectedLanguageKey, defaultLanguageValue) as String
+        val databaseName = sharedPref.getString(defaultDatabaseKey, defaultDatabaseValue) as String
 
-        val package_data_directory =
-            Environment.getDataDirectory().absolutePath + "/data/" + packageName
-        val file = File("$package_data_directory/databases/$database_name")
+        val packageDataDirectory = Environment.getDataDirectory().absolutePath + "/data/" + packageName
+        val file = File("$packageDataDirectory/databases/$databaseName")
 
         if (theme == R.style.Theme_NotificationDictionary) {
             setTheme(R.style.Theme_NotificationDictionary)
@@ -126,12 +135,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_main)
-        setLocale(selected_language)
+        setLocale(selectedLanguage)
         setIMEAction()
         createNotificationChannel()
 
         if (!file.exists()) {
-            initialize_database(database_name)
+            initialize_database(databaseName)
         }
 
         val mRecyclerView = findViewById<RecyclerView>(R.id.meaningRecyclerView)
@@ -142,36 +151,21 @@ class MainActivity : AppCompatActivity() {
         val mListadapter =
             RoomAdapter(
                 listOf(
-                    Word(
-                        1,
-                        "",
-                        "Store history and favourite words",
-                        1,
-                        1,
-                        """History of searches is stored. Words can also be starred from notification to be stored as favourite. History and Favourite are accessible from the menu at right top. In case of issues due to update please uninstall and try reinstalling the app since it needs database changes."""
+                    Word(1, "", "Store history and favourite words", 1, 1,
+                        """History of searches is stored. Words can also be starred from notification to be stored as favourite. 
+                            |History and Favourite are accessible from the menu at right top. 
+                            |In case of issues due to update please uninstall and try reinstalling the app since it needs database changes.""".trimMargin()
                     ),
                     Word(
-                        1,
-                        "",
-                        "Read meanings aloud as you read",
-                        1,
-                        1,
-                        """Enable Read switch at the right top to read aloud meaning of the word when the notification is created. There is also read button per notification to read meaning for each word."""
+                        1, "", "Read meanings aloud as you read", 1, 1,
+                        """Enable Read switch at the right top to read aloud meaning of the word when the notification is created. 
+                            |There is also read button per notification to read meaning for each word.""".trimMargin()
                     ),
-                    Word(
-                        1,
-                        "",
-                        "Copy and share",
-                        1,
-                        1,
-                        """Click on meaning to copy. Long press to share meaning with others. Notifications also have button for these actions."""
+                    Word(1, "", "Copy and share", 1, 1,
+                        """Click on meaning to copy. Long press to share meaning with others. 
+                            |Notifications also have button for these actions.""".trimMargin()
                     ),
-                    Word(
-                        1,
-                        "",
-                        "Thanks for the support",
-                        1,
-                        1,
+                    Word(1, "", "Thanks for the support", 1, 1,
                         """The application is open source and free to use. The development is
                                 done in my free time apart from my day job along with download costs for database files
                                 from CDN. If you find the app useful please leave a review in Play store and share the
@@ -186,7 +180,7 @@ class MainActivity : AppCompatActivity() {
             )
         mRecyclerView.adapter = mListadapter
 
-        initialize_spinner(database_name)
+        InitializeSpinner(databaseName)
         // show_changelog()
         show_rating()
         onNewIntent(intent)
@@ -207,9 +201,38 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    fun initialize_spinner(database_name: String) {
+    fun InitializeSpinner(databaseName: String) {
+        //val languageMenuExpanded = remember { mutableStateOf(false) }
+        val languages = listOf("English", "French", "German", "Polish")
+        //var text by remember { mutableStateOf(languages[0]) }
+    /*    ExposedDropdownMenuBox(expanded = languageMenuExpanded.value, onExpandedChange = { languageMenuExpanded.value = it }) {
+            TextField(
+                modifier = Modifier.menuAnchor(),
+                value = text,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                label = { Text("Label") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageMenuExpanded.value) },
+                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+            )
+            ExposedDropdownMenu(
+                expanded = languageMenuExpanded.value,
+                onDismissRequest = { languageMenuExpanded.value = false },
+            ) {
+                languages.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option, style = MaterialTheme.typography.bodyLarge) },
+                        onClick = {
+                            text = option
+                            languageMenuExpanded.value = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    )
+                }
+            }
+        }*/
         val spinner = findViewById<View>(R.id.spinner) as Spinner
-        val languages = arrayOf("English", "French", "German", "Polish")
         val adapter: ArrayAdapter<String> = ArrayAdapter<String>(
             this@MainActivity,
             android.R.layout.simple_spinner_item, languages
@@ -221,11 +244,11 @@ class MainActivity : AppCompatActivity() {
 
         // Set spinner selection after setting adapter. https://stackoverflow.com/a/1484546/2610955
         // Pass animated as false so that callback is not triggered. https://stackoverflow.com/a/17336944/2610955
-        if (database_name == "dictionary_fr.db") {
+        if (databaseName == "dictionary_fr.db") {
             spinner.setSelection(1, false)
-        } else if (database_name == "dictionary_de.db") {
+        } else if (databaseName == "dictionary_de.db") {
             spinner.setSelection(2, false)
-        } else if (database_name == "dictionary_pl.db") {
+        } else if (databaseName == "dictionary_pl.db") {
             spinner.setSelection(3, false)
         } else {
             spinner.setSelection(0, false)

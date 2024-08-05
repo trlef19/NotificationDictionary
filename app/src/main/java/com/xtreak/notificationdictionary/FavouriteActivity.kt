@@ -35,8 +35,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import androidx.recyclerview.widget.RecyclerView
-import com.xtreak.notificationdictionary.adapters.HistoryAdapter
 import java.util.concurrent.Executors
 
 class FavoriteWordProvider: PreviewParameterProvider<List<HistoryDao.WordWithMeaning>> {
@@ -54,12 +52,8 @@ class FavouriteActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //setContentView(R.layout.activity_favourite)
             val executor = Executors.newSingleThreadExecutor()
             val handler = Handler(Looper.getMainLooper())
-
-            //val linearLayoutManager = LinearLayoutManager(this)
-            //linearLayoutManager.orientation = LinearLayoutManager.VERTICAL
 
             executor.execute {
                 val database = AppDatabase.getDatabase(this)
@@ -67,15 +61,6 @@ class FavouriteActivity : ComponentActivity() {
                 val entries = historyDao.getAllFavouriteEntriesWithMeaning()
 
                 handler.post {
-                   // val mRecyclerView = findViewById<RecyclerView>(R.id.favouriteRecyclerView)
-                    val mListadapter = HistoryAdapter(
-                        entries as MutableList<HistoryDao.WordWithMeaning>,
-                        this,
-                        true
-                    )
-                    //mRecyclerView.adapter = mListadapter
-                    //mRecyclerView.layoutManager = linearLayoutManager
-                    //mListadapter.notifyItemRangeChanged(1, 100)
                     setContent {
                         FavouriteContent(entries)
                     }

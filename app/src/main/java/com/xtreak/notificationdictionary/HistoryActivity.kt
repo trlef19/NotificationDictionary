@@ -35,7 +35,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import com.xtreak.notificationdictionary.adapters.HistoryAdapter
 import java.util.concurrent.Executors
 
 class HistoryProvider: PreviewParameterProvider<List<HistoryDao.WordWithMeaning>> {
@@ -52,13 +51,10 @@ class HistoryActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //setContentView(R.layout.activity_history)
 
         val executor = Executors.newSingleThreadExecutor()
         val handler = Handler(Looper.getMainLooper())
 
-        //val linearLayoutManager = LinearLayoutManager(this)
-        //linearLayoutManager.orientation = LinearLayoutManager.VERTICAL
 
         executor.execute {
             val database = AppDatabase.getDatabase(this)
@@ -66,11 +62,6 @@ class HistoryActivity : ComponentActivity() {
             val entries = historyDao.getAllEntriesWithMeaning()
 
             handler.post {
-               // val mRecyclerView = findViewById<RecyclerView>(R.id.historyRecyclerView)
-                val mListadapter = HistoryAdapter(entries as MutableList<HistoryDao.WordWithMeaning>, this, false)
-                /*mRecyclerView.adapter = mListadapter
-                mRecyclerView.layoutManager = linearLayoutManager
-                mListadapter.notifyItemRangeChanged(1, 100)*/
                 setContent{
                     HistoryContent(entries)
                 }

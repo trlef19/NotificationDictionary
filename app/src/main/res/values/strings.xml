@@ -9,6 +9,15 @@
         Wiktionary is an open source project without which this app would not exist. The logo was made possible thanks to liberal Apache
         license of material design icons. Thanks to WikDict project. Thanks to all the open source projects that helped in the application development
     </string>
+    <string name="info1_summary">Store history and favourite words</string>
+    <string name="info1_description">History of searches is stored. Words can also be starred from notification to be stored as favourite.
+        History and Favourite are accessible from the menu at right top.
+        In case of issues due to update please uninstall and try reinstalling the app since it needs database changes.</string>
+    <string name="info2_summary">Read meanings aloud as you read</string>
+    <string name="info2_description">Enable Read switch at the right top to read aloud meaning of the word when the notification is created.
+    There is also read button per notification to read meaning for each word.</string>
+    <string name="info3_summary">Copy and share</string>
+    <string name="info3_description">Click on meaning to copy. Long press to share meaning with others. Notifications also have button for these actions.</string>
     <string name="license">Licenses</string>
     <string name="process_text_label">Meaning</string>
     <string name="preference_file_key">notification_dictionary</string>
