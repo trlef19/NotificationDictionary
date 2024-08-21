@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Karthikeyan Singaravelan
+ * Copyright (c) 2024, Karthikeyan Singaravelan
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
@@ -11,636 +11,384 @@
 package com.xtreak.notificationdictionary
 
 import android.Manifest
+import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.ProgressDialog
-import android.content.Context
-import android.content.DialogInterface
+import android.content.Context.NOTIFICATION_SERVICE
 import android.content.Intent
 import android.content.res.Configuration
-import android.os.*
-import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.widget.*
-import android.widget.TextView.OnEditorActionListener
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.view.MenuItemCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.snackbar.Snackbar
-import com.huxq17.download.Pump
-import com.huxq17.download.config.DownloadConfig
-import com.huxq17.download.core.DownloadListener
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.mikepenz.aboutlibraries.LibsBuilder
-import com.suddenh4x.ratingdialog.AppRating
-import com.suddenh4x.ratingdialog.preferences.RatingThreshold
-import de.cketti.library.changelog.ChangeLog
-import io.sentry.Sentry
+import kotlinx.coroutines.*
 import java.io.File
-import java.io.FileOutputStream
-import java.util.*
-import java.util.concurrent.Executors
-import java.util.zip.ZipFile
+import java.util.Locale
 
+sealed class Screens(val route : String) {
+    object Home : Screens("home_route")
+    object Search : Screens("search_route")
+    object Favorites : Screens("favorite_route")
+    object History : Screens("history_route")
+}
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var progress_dialog: ProgressDialog
-    private val CHANNEL_ID = "Dictionary"
-    private val NOTIFICATION_REQUEST_CODE = 11
-
-
+class MainActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val sharedPref = applicationContext.getSharedPreferences(
-            getString(R.string.preference_file_key), Context.MODE_PRIVATE
-        )
-        val defaultDatabaseKey = getString(R.string.default_database)
-        val selectedLanguageKey = getString(R.string.selected_language)
-        var defaultLanguageValue = "en"
-        var defaultDatabaseValue = "dictionary.db"
-        val selectedTheme = "selected_theme"
-
-        var selectedLanguage = sharedPref.getString(selectedLanguageKey, "UNSET") as String
-        val theme = sharedPref.getInt(selectedTheme, R.style.Theme_NotificationDictionary)
-
-
-        // https://stackoverflow.com/questions/4212320/get-the-current-language-in-device
-        val current_locale = Locale.getDefault().language
-
-        // On first run if the current locale is one of supported language then use it for
-        // better onboarding experience. Example french users on start will have french selected.
-        // Current locale might be fr but user might have selected english. In that case check for
-        // preference to be UNSET
-        if (selectedLanguage == "UNSET") {
-            if (current_locale.startsWith(
-                    "fr",
-                    ignoreCase = true
-                )
-            ) {
-                defaultLanguageValue = current_locale
-                defaultDatabaseValue = "dictionary_fr.db"
-            } else if (current_locale.startsWith(
-                    "de",
-                    ignoreCase = true
-                )
-            ) {
-                defaultLanguageValue = current_locale
-                defaultDatabaseValue = "dictionary_de.db"
-            } else if (current_locale.startsWith(
-                    "pl",
-                    ignoreCase = true
-                )
-            ) {
-                defaultLanguageValue = current_locale
-                defaultDatabaseValue = "dictionary_pl.db"
-            }
-            // Set values here so that
-            with(sharedPref.edit()) {
-                putString(defaultDatabaseKey, defaultDatabaseValue)
-                putString(selectedLanguageKey, defaultLanguageValue)
-                apply()
-                commit()
-            }
-        }
-
-        selectedLanguage = sharedPref.getString(selectedLanguageKey, defaultLanguageValue) as String
+        val sharedPref = applicationContext.getSharedPreferences("preference_file_key", MODE_PRIVATE)
+        val defaultDatabaseKey = "default_database"
+        val defaultDatabaseValue = "dictionary.db"
         val databaseName = sharedPref.getString(defaultDatabaseKey, defaultDatabaseValue) as String
-
         val packageDataDirectory = Environment.getDataDirectory().absolutePath + "/data/" + packageName
         val file = File("$packageDataDirectory/databases/$databaseName")
-
-        if (theme == R.style.Theme_NotificationDictionary) {
-            setTheme(R.style.Theme_NotificationDictionary)
-        } else {
-            setTheme(R.style.Theme_NotificationDictionary_Dark)
-        }
-
-        setContentView(R.layout.activity_main)
-        setLocale(selectedLanguage)
-        setIMEAction()
-        createNotificationChannel()
-
-        if (!file.exists()) {
-            initialize_database(databaseName)
-        }
-
-        val mRecyclerView = findViewById<RecyclerView>(R.id.meaningRecyclerView)
-        val linearLayoutManager = LinearLayoutManager(this)
-        linearLayoutManager.orientation = LinearLayoutManager.VERTICAL
-        mRecyclerView.layoutManager = linearLayoutManager
-
-        val mListadapter =
-            RoomAdapter(
-                listOf(
-                    Word(1, "", "Store history and favourite words", 1, 1,
-                        """History of searches is stored. Words can also be starred from notification to be stored as favourite. 
-                            |History and Favourite are accessible from the menu at right top. 
-                            |In case of issues due to update please uninstall and try reinstalling the app since it needs database changes.""".trimMargin()
-                    ),
-                    Word(
-                        1, "", "Read meanings aloud as you read", 1, 1,
-                        """Enable Read switch at the right top to read aloud meaning of the word when the notification is created. 
-                            |There is also read button per notification to read meaning for each word.""".trimMargin()
-                    ),
-                    Word(1, "", "Copy and share", 1, 1,
-                        """Click on meaning to copy. Long press to share meaning with others. 
-                            |Notifications also have button for these actions.""".trimMargin()
-                    ),
-                    Word(1, "", "Thanks for the support", 1, 1,
-                        """The application is open source and free to use. The development is
-                                done in my free time apart from my day job along with download costs for database files
-                                from CDN. If you find the app useful please leave a review in Play store and share the
-                                app with your friends. It will help and encourage me in maintaining the app and adding more features.
-
-                                Please grant notification permission since the app requires notification permission in
-                                Android 13+ to show meanings through notification.
-                                Thanks for your support.
-                                """
-                    ),
-                ), this
-            )
-        mRecyclerView.adapter = mListadapter
-
-        InitializeSpinner(databaseName)
-        // show_changelog()
-        show_rating()
-        onNewIntent(intent)
-
-        // Request notification permission in Android 33+
-        // https://developer.android.com/develop/ui/views/notifications/notification-permission
-        requestNotificationPermission()
+        setContent {MainScreen()}
     }
+}
+data class BottomNavigationItem(
+    val label : String = "",
+    val icon : ImageVector = Icons.Filled.Home,
+    val route : String = ""
+) {
 
-    private fun setIMEAction() {
-        val wordEdit = findViewById<EditText>(R.id.wordInput)
-        wordEdit.setOnEditorActionListener(OnEditorActionListener { v, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                sendMessage(v)
-                return@OnEditorActionListener true
-            }
-            false
-        })
-    }
-
-    fun InitializeSpinner(databaseName: String) {
-        //val languageMenuExpanded = remember { mutableStateOf(false) }
-        val languages = listOf("English", "French", "German", "Polish")
-        //var text by remember { mutableStateOf(languages[0]) }
-    /*    ExposedDropdownMenuBox(expanded = languageMenuExpanded.value, onExpandedChange = { languageMenuExpanded.value = it }) {
-            TextField(
-                modifier = Modifier.menuAnchor(),
-                value = text,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                label = { Text("Label") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageMenuExpanded.value) },
-                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+    //function to get the list of bottomNavigationItems
+    fun bottomNavigationItems() : List<BottomNavigationItem> {
+        return listOf(
+            BottomNavigationItem(
+                label = "Home",
+                icon = Icons.Filled.Home,
+                route = Screens.Home.route
+            ),
+            BottomNavigationItem(
+                label = "Search",
+                icon = Icons.Filled.Search,
+                route = Screens.Search.route
+            ),
+            BottomNavigationItem(
+                label = "Favorites",
+                icon = Icons.Filled.Star,
+                route = Screens.Favorites.route
+            ),
+            BottomNavigationItem(
+                label = "History",
+                icon = Icons.Filled.DateRange,
+                route = Screens.History.route
             )
-            ExposedDropdownMenu(
-                expanded = languageMenuExpanded.value,
-                onDismissRequest = { languageMenuExpanded.value = false },
-            ) {
-                languages.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option, style = MaterialTheme.typography.bodyLarge) },
-                        onClick = {
-                            text = option
-                            languageMenuExpanded.value = false
-                        },
-                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                    )
-                }
-            }
-        }*/
-        val spinner = findViewById<View>(R.id.spinner) as Spinner
-        val adapter: ArrayAdapter<String> = ArrayAdapter<String>(
-            this@MainActivity,
-            android.R.layout.simple_spinner_item, languages
         )
-
-
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = adapter
-
-        // Set spinner selection after setting adapter. https://stackoverflow.com/a/1484546/2610955
-        // Pass animated as false so that callback is not triggered. https://stackoverflow.com/a/17336944/2610955
-        if (databaseName == "dictionary_fr.db") {
-            spinner.setSelection(1, false)
-        } else if (databaseName == "dictionary_de.db") {
-            spinner.setSelection(2, false)
-        } else if (databaseName == "dictionary_pl.db") {
-            spinner.setSelection(3, false)
-        } else {
-            spinner.setSelection(0, false)
-        }
-
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-
-            //https://stackoverflow.com/questions/31497712/get-previously-selected-item-from-spinner-onitemselectedlistener-event
-            var previous: Int = spinner.selectedItemPosition
-            var startup_selected = spinner.selectedItem
-
-            // https://stackoverflow.com/questions/5124835/spinner-onitemselected-called-erroneously-without-user-action/10102356#10102356
-            // Show dialog initially. Then on clicking no set it false so that it doesn't trigger next time during which reset to true.
-            var show_dialog: Boolean = true
-
-            override fun onItemSelected(
-                arg0: AdapterView<*>?,
-                arg1: View?,
-                arg2: Int,
-                arg3: Long
-            ) {
-                // animate false doesn't work in oreo. So compare selection and don't trigger
-                // This handles startup dialog issue. Then set previous_selected as null so that
-                // it's not used for later stages in app lifecycle
-                val current_item = spinner.selectedItem
-                if (current_item == startup_selected) {
-                    startup_selected = null
-                    return
-                }
-
-                if (show_dialog) {
-                    val item = spinner.selectedItem.toString()
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle(getString(R.string.confirmation))
-                        .setMessage(getString(R.string.change_confirmation))
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setCancelable(false)
-                        .setPositiveButton(android.R.string.yes,
-                            DialogInterface.OnClickListener { dialog, whichButton ->
-
-                                val sharedPref = applicationContext.getSharedPreferences(
-                                    getString(R.string.preference_file_key), Context.MODE_PRIVATE
-                                )
-                                val default_database_key = getString(R.string.default_database)
-                                val selected_language_key = getString(R.string.selected_language)
-
-                                var database_name = "database_en.db"
-                                var selected_language = "en"
-
-                                // TODO: Need to organize mapping somewhere. This is not scalable on introducing new languages.
-                                if (item == "English") {
-                                    database_name = "dictionary.db"
-                                    selected_language = "en"
-                                    setLocale("en")
-                                } else if (item == "French") {
-                                    database_name = "dictionary_fr.db"
-                                    selected_language = "fr"
-                                    setLocale("fr")
-                                } else if (item == "German") {
-                                    database_name = "dictionary_de.db"
-                                    selected_language = "de"
-                                } else if (item == "Polish") {
-                                    database_name = "dictionary_pl.db"
-                                    selected_language = "pl"
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+@Preview
+fun MainScreen() {
+    var navigationSelectedItem by remember { mutableIntStateOf(0) }
+    val navController = rememberNavController()
+    var expanded by remember { mutableStateOf(false) }
+    var soundOn by remember { mutableStateOf(false) }
+    val activity = LocalContext.current
+    //CreateNotificationChannel()
+    //RequestNotificationPermission()
+    MaterialTheme {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer, titleContentColor = MaterialTheme.colorScheme.primary),
+                    title = { Text("Notification Dictionary") },
+                    actions = {
+                        Text(modifier = Modifier.padding(horizontal = 2.dp),
+                            color= MaterialTheme.colorScheme.primary, text = "Switch Sound")
+                        Switch(checked = soundOn, onCheckedChange = { soundOn = it })
+                        Box(contentAlignment = Alignment.TopStart) {
+                            IconButton(onClick = { expanded = !expanded }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Switch Sound")
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                offset = DpOffset(0.dp, 0.dp),
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.about)) },
+                                    onClick = { activity.startActivity(Intent(activity, AboutActivity::class.java)) })
+                                DropdownMenuItem(
+                                    onClick = { LibsBuilder().withActivityTitle(activity.getString(R.string.license_tab_title))
+                                        .withLicenseShown(true).start(activity)},
+                                    text = { Text(stringResource(R.string.license)) })
+                                DropdownMenuItem(
+                                    onClick = { activity.startActivity(Intent(activity, HistoryActivity::class.java)) },
+                                    text = { Text(stringResource(R.string.history)) })
+                                DropdownMenuItem(
+                                    onClick = { activity.startActivity(Intent(activity, FavouriteActivity::class.java)) },
+                                    text = { Text(stringResource(R.string.favourite)) })
+                            }
+                        }
+                    }
+                )
+            },
+            bottomBar = {
+                NavigationBar {
+                    //getting the list of bottom navigation items for our data class
+                    BottomNavigationItem().bottomNavigationItems().forEachIndexed {index,navigationItem ->
+                        //iterating all items with their respective indexes
+                        NavigationBarItem(
+                            selected = index == navigationSelectedItem,
+                            label = { Text(navigationItem.label)},
+                            icon = { Icon(navigationItem.icon, contentDescription = navigationItem.label) },
+                            onClick = { navigationSelectedItem = index
+                                navController.navigate(navigationItem.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-
-                                with(sharedPref.edit()) {
-                                    putString(default_database_key, database_name)
-                                    putString(selected_language_key, selected_language)
-                                    apply()
-                                    commit()
-                                }
-
-                                // As soon as the preference is changed if the file doesn't exist then download
-                                val package_data_directory =
-                                    Environment.getDataDirectory().absolutePath + "/data/" + packageName
-                                val file = File("$package_data_directory/databases/$database_name")
-
-                                if (!file.exists()) {
-                                    initialize_database(database_name)
-                                }
-                                previous = spinner.selectedItemPosition
                             }
                         )
-                        .setNegativeButton(android.R.string.no,
-                            DialogInterface.OnClickListener { dialog, whichButton ->
-                                spinner.setSelection(previous, false)
-                                show_dialog = false
-                            }).show()
-                } else {
-                    show_dialog = true
-                }
-
-            }
-
-            override fun onNothingSelected(arg0: AdapterView<*>?) {}
-        }
-    }
-
-    // https://stackoverflow.com/questions/2900023/change-app-language-programmatically-in-android
-    fun setLocale(languageCode: String?) {
-        val locale = Locale(languageCode)
-        Locale.setDefault(locale)
-        val resources = this.resources
-        val config: Configuration = resources.configuration
-        config.setLocale(locale)
-        resources.updateConfiguration(config, resources.displayMetrics)
-
-        // Setting locale changes the values only on startup. We need to call
-        // recreate() but it can end in a loop as we do it in app startup.
-        // Call these manually to refresh but this needs a fix.
-        val wordEdit = findViewById<EditText>(R.id.wordInput)
-        val searchButton = findViewById<TextView>(R.id.searchButton)
-        val word: String? = intent?.extras?.getString("NotificationWord")
-
-        searchButton.text = getString(R.string.search)
-    }
-
-    fun show_changelog() {
-        val changelog = ChangeLog(this)
-        if (changelog.isFirstRun) {
-            changelog.logDialog.show()
-        }
-    }
-
-    fun show_rating() {
-        AppRating.Builder(this)
-            .setMinimumLaunchTimes(10)
-            .setMinimumDays(2)
-            .setMinimumLaunchTimesToShowAgain(15)
-            .setMinimumDaysToShowAgain(10)
-            .setRatingThreshold(RatingThreshold.FIVE)
-            .showIfMeetsConditions()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        val inflater = menuInflater
-        inflater.inflate(R.menu.menu, menu)
-
-        val switchSoundItem = menu!!.findItem(R.id.switch_sound)
-        val soundView = MenuItemCompat.getActionView(switchSoundItem)
-        val sharedPref = applicationContext.getSharedPreferences(
-            getString(R.string.preference_file_key), Context.MODE_PRIVATE
-        )
-
-        val switch_sound = soundView.findViewById<View>(R.id.sound_switch_button) as Switch
-        var switch_sound_value = sharedPref.getBoolean(
-            "read_definition",
-            false
-        )
-
-        switch_sound.isChecked = switch_sound_value
-
-
-        // https://stackoverflow.com/questions/32091709/how-to-get-set-action-event-in-android-actionbar-switch
-        // https://stackoverflow.com/questions/8811594/implementing-user-choice-of-theme
-        // https://stackoverflow.com/questions/2482848/how-to-change-current-theme-at-runtime-in-android
-        // recreate needs to be called as per stackoverflow answers after initial theme is set though it's not documented.
-        switch_sound.setOnClickListener { buttonView ->
-            val sound_button = findViewById<View>(R.id.sound_switch_button) as Switch
-            switch_sound_value = !switch_sound_value
-            with(sharedPref.edit()) {
-                putBoolean("read_definition", switch_sound_value)
-                apply()
-                commit()
-            }
-
-            sound_button.isChecked = switch_sound_value
-        }
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.about_us -> {
-                val about_activity = Intent(applicationContext, AboutActivity::class.java)
-                startActivityForResult(about_activity, 0)
-            }
-            R.id.license -> {
-                LibsBuilder()
-                    .withActivityTitle("Open Source Licenses")
-                    .withLicenseShown(true)
-                    .start(this)
-            }
-            R.id.history -> {
-                val history_activity = Intent(applicationContext, HistoryActivity::class.java)
-                startActivityForResult(history_activity, 0)
-            }
-            R.id.favourite -> {
-                val favourite_activity = Intent(applicationContext, FavouriteActivity::class.java)
-                startActivityForResult(favourite_activity, 0)
-            }
-        }
-        return true
-    }
-
-
-    private fun initProgressDialog(): ProgressDialog {
-        progress_dialog = ProgressDialog(this)
-        progress_dialog.setTitle("Downloading database for initial offline usage")
-        progress_dialog.progress = 0
-        progress_dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-        progress_dialog.setCancelable(false)
-        return progress_dialog
-    }
-
-    private fun initialize_database(database_name: String) {
-        // declare the dialog as a member field of your activity
-        // ProgressDialog is deprecated in documentation to use ProgressBar.
-        // But we don't want the user to cancel this. It's one time and takes a couple of seconds
-
-        // TODO: Make this configurable based on environment?
-        val url = "https://xtreak.sfo3.cdn.digitaloceanspaces.com/dictionaries/v2/$database_name.zip"
-        // val url = "http://192.168.0.105:8000/$database_name.zip" // for local mobile testing
-        // val url = "http://10.0.2.2:8000/$database_name.zip" // for local emulator testing
-
-        val progressDialog = initProgressDialog()
-        val package_data_directory =
-            Environment.getDataDirectory().absolutePath + "/data/" + packageName
-        val zip_path = File("$package_data_directory/$database_name.zip").absolutePath
-
-        // https://github.com/huxq17/Pump/blob/master/kotlin_app/src/main/java/com/huxq17/download/demo/MainActivity.kt
-        DownloadConfig.newBuilder()
-            .setMaxRunningTaskNum(1)
-            .setMinUsableStorageSpace(140 * 1024L * 1024) // 140MB as per database size
-            .build()
-        progressDialog.progress = 0
-        progressDialog.show()
-        Pump.newRequest(url, zip_path)
-            .listener(object : DownloadListener() {
-
-                override fun onProgress(progress: Int) {
-                    progressDialog.progress = progress
-                }
-
-                fun copy_and_unzip(source: String, destination: String) {
-                    val zipfile = ZipFile(source)
-                    val entry = zipfile.entries().toList().first()
-
-                    // The zip file only has one entry which is the database. So use it as an
-                    // input stream and copy the unzipped file to output stream. Delete the source
-                    // zip file to save space.
-                    val input_stream = zipfile.getInputStream(entry)
-                    val output_stream = FileOutputStream(destination)
-                    input_stream.copyTo(output_stream, 1024 * 1024 * 2)
-                    File(zip_path).delete()
-                }
-
-                override fun onSuccess() {
-                    val destination_folder = File("$package_data_directory/databases")
-                    val destination_path =
-                        File("$package_data_directory/databases/$database_name").absolutePath
-                    val source_path = downloadInfo.filePath
-
-                    if (!destination_folder.exists()) {
-                        destination_folder.mkdirs()
                     }
-
-                    copy_and_unzip(source_path, destination_path)
-                    progressDialog.dismiss()
-                    Snackbar.make(
-                        findViewById(R.id.mainLayout),
-                        "Download finished",
-                        Snackbar.LENGTH_SHORT
-                    ).show()
                 }
-
-                override fun onFailed() {
-                    progressDialog.dismiss()
-                    Snackbar.make(
-                        findViewById(R.id.mainLayout),
-                        "Download failed. Please check your internet connection and relaunch the app.",
-                        Snackbar.LENGTH_INDEFINITE
-                    ).show()
-                }
-            })
-            .forceReDownload(false)
-            .threadNum(3)
-            .setRetry(3, 200)
-            .submit()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        applicationContext.cacheDir.deleteRecursively() // Delete cache on exit
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        // Launch the activity from notification with word filled if present.
-        // Fresh start of app won't have NotificationWord value since it's only
-        // set as part of notification creation.
-        super.onNewIntent(intent)
-        val extras = intent.extras
-
-        if (extras != null) {
-            val word = extras.getString("NotificationWord")
-            if (word != null) {
-                val wordEdit = findViewById<EditText>(R.id.wordInput)
-                val searchButton = findViewById<TextView>(R.id.searchButton)
-
-                // Fill the text box with word and emulate click to get all meanings
-                wordEdit.setText(word)
-                searchButton.performClick()
             }
-        }
-    }
-
-    // https://developer.android.com/training/notify-user/build-notification#kotlin
-    private fun createNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = getString(R.string.channel_name)
-            val descriptionText = getString(R.string.channel_description)
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-                setShowBadge(false)
-            }
-            // Register the channel with the system
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun requestNotificationPermission() {
-        val notificationManager: NotificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= 33 && !notificationManager.areNotificationsEnabled()) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                NOTIFICATION_REQUEST_CODE
-            )
-        }
-    }
-
-    fun sendMessage(view: View) {
-        val wordEdit = findViewById<EditText>(R.id.wordInput)
-
-        // https://stackoverflow.com/questions/18414804/android-edittext-remove-focus-after-clicking-a-button
-        wordEdit.clearFocus()
-
-        val word = wordEdit.text.toString().trim().lowercase()
-
-        val executor = Executors.newSingleThreadExecutor()
-        val handler = Handler(Looper.getMainLooper())
-
-        executor.execute {
-            val database = AppDatabase.getDatabase(this)
-            val dao = database.dictionaryDao()
-            val historyDao = database.historyDao()
-            var meanings: List<Word>
-
-            try {
-                meanings = dao.getAllMeaningsByWord(word)
-                if (meanings.isNotEmpty()) {
-                    addHistoryEntry(historyDao, word)
-                }
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                Log.d("ndict:", e.toString())
-                meanings = listOf(
-                    Word(
-                        1, "", "Error", 1, 1,
-                        "There was an error while trying to fetch the meaning. The app tries to download the database at first launch for offline usage." +
-                                "The error usually occurs if the database was not downloaded properly due to network issue during start or changing language." +
-                                "Please turn on your internet connection and restart the app to download the database."
-                    )
+        ) { paddingValues ->
+            Column(modifier = Modifier.padding(paddingValues).fillMaxSize().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                InitializeLanguageMenu(Modifier.padding(10.dp,3.dp))
+                ElevatedCard(//ElevatedCard for the first card
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    modifier = Modifier.padding(20.dp, 10.dp).fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+                )
+                {
+                Text(
+                    modifier = Modifier.padding(10.dp, 3.dp),
+                    fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    text = stringResource(id = R.string.info1_summary)
+                )
+                Text(
+                    modifier = Modifier.padding(10.dp, 3.dp),
+                    fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    text = stringResource(id = R.string.info1_description)
                 )
             }
-
-            try {
-                resolveRedirectMeaning(meanings, dao)
-            } catch (e: Exception) {
-                Sentry.captureException(e)
+            ElevatedCard(//ElevatedCard for the second card
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.padding(20.dp, 10.dp).fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+            )
+            {
+                Text(
+                    modifier = Modifier.padding(10.dp, 3.dp),
+                    fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                    fontWeight = FontWeight.Medium,
+                    text = stringResource(id = R.string.info2_summary)
+                )
+                Text(
+                    modifier = Modifier.padding(10.dp, 3.dp),
+                    fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                    fontWeight = FontWeight.Normal,
+                    text = stringResource(id = R.string.info2_description)
+                )
             }
-
-            handler.post {
-                val mRecyclerView = findViewById<RecyclerView>(R.id.meaningRecyclerView)
-                var mListadapter =
-                    RoomAdapter(listOf(Word(1, "", "Unknown", 1, 1, "No meaning found")), this)
-
-                if (meanings.isNotEmpty()) {
-                    mListadapter = RoomAdapter(meanings, this)
+                ElevatedCard(//ElevatedCard for the third card
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    modifier = Modifier.padding(20.dp, 10.dp).fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+                )
+                {
+                    Text(
+                        modifier = Modifier.padding(10.dp, 3.dp),
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.Medium,
+                        text = stringResource(id = R.string.info3_summary)
+                    )
+                    Text(
+                        modifier = Modifier.padding(10.dp, 3.dp),
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.Normal,
+                        text = stringResource(id = R.string.info3_description)
+                    )
                 }
+                ElevatedCard(//ElevatedCard for the fourth card
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    modifier = Modifier.padding(20.dp, 10.dp).fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+                )
+                {
+                    Text(
+                        modifier = Modifier.padding(10.dp, 3.dp),
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.Medium,
+                        text = stringResource(id = R.string.info4_summary)
+                    )
+                    Text(
+                        modifier = Modifier.padding(10.dp, 3.dp),
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.Normal,
+                        text = stringResource(id = R.string.info4_description)
+                    )
+                }
+        }
+            NavHost(navController = navController, startDestination = Screens.Home.route, modifier = Modifier.padding(paddingValues = paddingValues)) {
+            composable(Screens.Home.route) {
+                LocalContext.current.startActivity(Intent(LocalContext.current, MainActivity::class.java))
+            }
+            composable(Screens.Search.route) {
 
-                mRecyclerView.adapter = mListadapter
-                mListadapter.notifyItemRangeChanged(1, 100)
+            }
+            composable(Screens.History.route) {
+                LocalContext.current.startActivity(Intent(LocalContext.current, HistoryActivity::class.java))
+            }
+            composable(Screens.Favorites.route) {
+                LocalContext.current.startActivity(Intent(LocalContext.current, FavouriteActivity::class.java))
+            }
+        }
+            }
+        }
+
+
+}
+@Composable
+private fun CreateNotificationChannel() {
+        val name = stringResource(id = R.string.channel_name)
+        val descriptionText = stringResource(id = R.string.channel_description)
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        val channel = NotificationChannel("Dictionary", name, importance)
+            channel.description = descriptionText
+            channel.setShowBadge(false)
+        val notificationManager = LocalContext.current.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+}
+@Composable
+private fun RequestNotificationPermission() {
+    val notificationRequestCode = 11
+    val context = LocalContext.current
+    val notificationManager = LocalContext.current.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= 32 && !notificationManager.areNotificationsEnabled()) {
+        ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationRequestCode)
+    }
+}
+@Composable
+private fun InitProgressIndicator() {
+    var currentProgress by remember { mutableFloatStateOf(0f) }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth())
+    {
+        Text("Downloading database for initial offline usage")
+        Button(onClick = { loading = true
+            scope.launch {
+                loadProgress { progress -> currentProgress = progress }
+                loading = false // Reset loading when the coroutine finishes
+            }
+        }, enabled = !loading) {
+            Text("Download")
+        }
+        LinearProgressIndicator(progress = {currentProgress}, modifier = Modifier.fillMaxWidth())
+    }
+}
+suspend fun loadProgress(updateProgress: (Float) -> Unit) {
+    for (i in 1..100) {
+        updateProgress(i.toFloat() / 100)
+        delay(100)
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InitializeLanguageMenu(modifier : Modifier) {
+    val languageMenuExpanded = remember { mutableStateOf(false) }
+    val languages = listOf("English", "French", "German", "Polish")
+    var text by remember { mutableStateOf(languages[0]) }
+    ExposedDropdownMenuBox(
+        modifier = modifier,
+        expanded = languageMenuExpanded.value,
+        onExpandedChange = { languageMenuExpanded.value = it }) {
+        TextField(
+            modifier = Modifier.menuAnchor(),
+            value = text,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text("Languages") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageMenuExpanded.value) },
+            colors = ExposedDropdownMenuDefaults.textFieldColors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                focusedContainerColor = MaterialTheme.colorScheme.inversePrimary
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = languageMenuExpanded.value,
+            onDismissRequest = { languageMenuExpanded.value = false },
+        ) {
+            languages.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, style = MaterialTheme.typography.bodyLarge) },
+                    onClick = {
+                        text = option
+                        languageMenuExpanded.value = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
             }
         }
     }
 }
+

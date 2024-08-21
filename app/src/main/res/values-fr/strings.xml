@@ -4,9 +4,11 @@
     <string name="channel_description">Dictionary notification</string>
     <string name="word">ˈwɜːʳd</string>
     <string name="about">əˈbaʊt</string>
+    <string name="about_description">about_description</string>
     <string name="license">ˈlaɪsəns</string>
     <string name="process_text_label">ˈmiːnɪŋ</string>
     <string name="preference_file_key">notification_dictionary</string>
     <string name="default_database">default_database</string>
+    <string name="selected_language">selected_language</string>
     <string name="search">Chercher</string>
 </resources>

@@ -8,9 +8,6 @@
     </string>
     <string name="license">Άδειες</string>
     <string name="process_text_label">Ετυμολογία</string>
-    <string name="preference_file_key">notification_dictionary</string>
-    <string name="default_database">default_database</string>
-    <string name="selected_language">selected_language</string>
     <string name="search">Αναζήτηση</string>
     <string name="manage">Διαχείριση</string>
     <string name="change_confirmation">Θες να αλλάξεις τη γλώσσα και να κατεβάσεις την βάση δεδομένων αν δεν υπάρχει;</string>

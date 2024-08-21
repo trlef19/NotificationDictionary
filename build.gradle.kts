@@ -3,14 +3,11 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url = uri("https://plugins.gradle.org/m2/")
-        }
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.5.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
-        classpath("com.mikepenz.aboutlibraries.plugin:aboutlibraries-plugin:8.9.2")
+        classpath("com.android.tools.build:gradle:8.6.0-rc01")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.10")
+        classpath("com.mikepenz.aboutlibraries.plugin:aboutlibraries-plugin:10.1.0")
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -18,7 +15,8 @@ buildscript {
 }
 
 plugins {
-    id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
+    id("com.google.devtools.ksp") version "2.0.10-1.0.24" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.10" apply false
 }
 
 tasks.register("clean", Delete::class) {

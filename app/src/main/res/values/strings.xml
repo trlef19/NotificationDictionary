@@ -1,9 +1,22 @@
+<!--
+  ~ Copyright (c) 2024, Karthikeyan Singaravelan
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+
 <resources>
     <string name="app_name">Notification Dictionary</string>
     <string name="channel_name">Dictionary</string>
     <string name="channel_description">Dictionary notification</string>
     <string name="word">Word</string>
-    <string name="about">About</string>
+    <string name="about">About Us</string>
+    <string name="preference_file_key">preference_file_key</string>
+    <string name="default_database">default_database</string>
+    <string name="selected_language">selected_language</string>
     <string name="about_description">Notification Dictionary is an application to display meaning of selected word as
         notification from all apps that support text selection. The app works offline and uses Wiktionary as a database for meanings.
         Wiktionary is an open source project without which this app would not exist. The logo was made possible thanks to liberal Apache
@@ -18,11 +31,16 @@
     There is also read button per notification to read meaning for each word.</string>
     <string name="info3_summary">Copy and share</string>
     <string name="info3_description">Click on meaning to copy. Long press to share meaning with others. Notifications also have button for these actions.</string>
+    <string name="info4_summary">Thanks for the support</string>
+    <string name="info4_description">The application is open source and free to use. The development is done in my free time apart
+        from my day job along with download costs for database files from CDN.
+        If you find the app useful please leave a review in Play store and share the app with your friends.
+        It will help and encourage me in maintaining the app and adding more features.\n\nPlease grant notification permission
+        since the app requires notification permission in Android 13+ to show meanings through notification.
+        Thanks for your support.</string>
     <string name="license">Licenses</string>
+    <string name="license_tab_title">Open Source Licenses</string>
     <string name="process_text_label">Meaning</string>
-    <string name="preference_file_key">notification_dictionary</string>
-    <string name="default_database">default_database</string>
-    <string name="selected_language">selected_language</string>
     <string name="search">Search</string>
     <string name="manage">Manage</string>
     <string name="change_confirmation">Do you want to change the language and download database if not present?</string>

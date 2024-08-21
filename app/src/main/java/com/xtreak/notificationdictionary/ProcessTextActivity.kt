@@ -145,9 +145,7 @@ open class ProcessIntentActivity : AppCompatActivity() {
         val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.notify(CHANNEL_NUMBER, builder.build())
 
-        val sharedPref = applicationContext.getSharedPreferences(
-            getString(R.string.preference_file_key), Context.MODE_PRIVATE
-        )
+        val sharedPref = applicationContext.getSharedPreferences("preference_file_key", Context.MODE_PRIVATE)
         val read_definition = sharedPref.getBoolean(
             "read_definition",
             false

@@ -2,19 +2,18 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.mikepenz.aboutlibraries.plugin")
 }
 
 android {
-    compileSdk = 34
-
     defaultConfig {
         applicationId = "com.xtreak.notificationdictionary"
         minSdk = 31
-        targetSdk = 34
+        targetSdk = 35
+        compileSdk = 35
         versionCode = 23
         versionName = "0.0.23"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -38,13 +37,13 @@ android {
         jvmTarget = "17"
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"
+    androidResources {
+        generateLocaleConfig = true
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
-        compose = true
     }
 
     namespace = "com.xtreak.notificationdictionary"
@@ -60,7 +59,7 @@ dependencies {
     implementation("com.huxq17.pump:download:1.3.10")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("de.cketti.library.changelog:ckchangelog:1.2.2")
-    implementation("io.sentry:sentry-android:7.12.0")
+    implementation("io.sentry:sentry-android:7.14.0")
     implementation("com.mikepenz:aboutlibraries:11.2.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -69,7 +68,7 @@ dependencies {
     implementation("io.coil-kt:coil:2.7.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material3:material3-android:1.2.1")
-    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.activity:activity-compose:1.9.1")
     implementation("androidx.compose.ui:ui-tooling-preview-android:1.6.8")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
