@@ -36,7 +36,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
     androidResources {
         generateLocaleConfig = true
     }
@@ -60,11 +59,12 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("de.cketti.library.changelog:ckchangelog:1.2.2")
     implementation("io.sentry:sentry-android:7.14.0")
-    implementation("com.mikepenz:aboutlibraries:11.2.2")
+    implementation("com.mikepenz:aboutlibraries-compose-m3:11.2.3")
+    implementation("com.mikepenz:aboutlibraries:11.2.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.runtime:runtime-android:1.6.8")
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation(platform("androidx.compose:compose-bom:2024.08.00"))
     implementation("io.coil-kt:coil:2.7.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material3:material3-android:1.2.1")

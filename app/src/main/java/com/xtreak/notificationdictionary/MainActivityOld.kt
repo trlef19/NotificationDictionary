@@ -15,7 +15,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.ProgressDialog
-import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.res.Configuration
@@ -38,9 +37,6 @@ import com.huxq17.download.Pump
 import com.huxq17.download.config.DownloadConfig
 import com.huxq17.download.core.DownloadListener
 import com.mikepenz.aboutlibraries.LibsBuilder
-import com.suddenh4x.ratingdialog.AppRating
-import com.suddenh4x.ratingdialog.preferences.RatingThreshold
-import de.cketti.library.changelog.ChangeLog
 import io.sentry.Sentry
 import java.io.File
 import java.io.FileOutputStream
@@ -126,7 +122,6 @@ class MainActivityOld : AppCompatActivity() {
 
         initializeSpinner(databaseName)
         // show_changelog()
-        show_rating()
         onNewIntent(intent)
         requestNotificationPermission()
     }
@@ -184,8 +179,8 @@ class MainActivityOld : AppCompatActivity() {
                 // animate false doesn't work in oreo. So compare selection and don't trigger
                 // This handles startup dialog issue. Then set previous_selected as null so that
                 // it's not used for later stages in app lifecycle
-                val current_item = spinner.selectedItem
-                if (current_item == startup_selected) {
+                val currentItem = spinner.selectedItem
+                if (currentItem == startup_selected) {
                     startup_selected = null
                     return
                 }
@@ -200,40 +195,40 @@ class MainActivityOld : AppCompatActivity() {
                         .setPositiveButton(android.R.string.yes,
                             DialogInterface.OnClickListener { dialog, whichButton ->
                                 val sharedPref = applicationContext.getSharedPreferences(getString(R.string.preference_file_key), MODE_PRIVATE)
-                                val default_database_key = getString(R.string.default_database)
-                                val selected_language_key = getString(R.string.selected_language)
-                                var database_name = "database_en.db"
-                                var selected_language = "en"
+                                val defaultDatabaseKey = getString(R.string.default_database)
+                                val selectedLanguageKey = getString(R.string.selected_language)
+                                var databaseName = "database_en.db"
+                                var selectedLanguage = "en"
                                 // TODO: Need to organize mapping somewhere. This is not scalable on introducing new languages.
                                 if (item == "English") {
-                                    database_name = "dictionary.db"
-                                    selected_language = "en"
+                                    databaseName = "dictionary.db"
+                                    selectedLanguage = "en"
                                     setLocale("en")
                                 } else if (item == "French") {
-                                    database_name = "dictionary_fr.db"
-                                    selected_language = "fr"
+                                    databaseName = "dictionary_fr.db"
+                                    selectedLanguage = "fr"
                                     setLocale("fr")
                                 } else if (item == "German") {
-                                    database_name = "dictionary_de.db"
-                                    selected_language = "de"
+                                    databaseName = "dictionary_de.db"
+                                    selectedLanguage = "de"
                                 } else if (item == "Polish") {
-                                    database_name = "dictionary_pl.db"
-                                    selected_language = "pl"
+                                    databaseName = "dictionary_pl.db"
+                                    selectedLanguage = "pl"
                                 }
 
                                 with(sharedPref.edit()) {
-                                    putString(default_database_key, database_name)
-                                    putString(selected_language_key, selected_language)
+                                    putString(defaultDatabaseKey, databaseName)
+                                    putString(selectedLanguageKey, selectedLanguage)
                                     apply()
                                     commit()
                                 }
 
                                 // As soon as the preference is changed if the file doesn't exist then download
-                                val package_data_directory = Environment.getDataDirectory().absolutePath + "/data/" + packageName
-                                val file = File("$package_data_directory/databases/$database_name")
+                                val packageDataDirectory = Environment.getDataDirectory().absolutePath + "/data/" + packageName
+                                val file = File("$packageDataDirectory/databases/${databaseName}")
 
                                 if (!file.exists())
-                                    initialize_database(database_name)
+                                    initialize_database(databaseName)
                                 previous = spinner.selectedItemPosition
                             }
                         )
@@ -269,23 +264,6 @@ class MainActivityOld : AppCompatActivity() {
         val word: String? = intent?.extras?.getString("NotificationWord")
 
         searchButton.text = getString(R.string.search)
-    }
-
-    /*fun show_changelog() {
-        val changelog = ChangeLog(this)
-        if (changelog.isFirstRun) {
-            changelog.logDialog.show()
-        }
-    }*/
-
-    fun show_rating() {
-        AppRating.Builder(this)
-            .setMinimumLaunchTimes(10)
-            .setMinimumDays(2)
-            .setMinimumLaunchTimesToShowAgain(15)
-            .setMinimumDaysToShowAgain(10)
-            .setRatingThreshold(RatingThreshold.FIVE)
-            .showIfMeetsConditions()
     }
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
@@ -427,7 +405,7 @@ class MainActivityOld : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         applicationContext.cacheDir.deleteRecursively() // Delete cache on exit
-    }
+    }//TODO DONE
 
     override fun onNewIntent(intent: Intent) {
         // Launch the activity from notification with word filled if present.

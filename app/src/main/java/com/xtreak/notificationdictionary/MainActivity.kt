@@ -11,17 +11,17 @@
 package com.xtreak.notificationdictionary
 
 import android.Manifest
-import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context.NOTIFICATION_SERVICE
 import android.content.Intent
-import android.content.res.Configuration
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibraryDefaults
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -64,10 +60,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -79,62 +73,77 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.mikepenz.aboutlibraries.LibsBuilder
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.Locale
 
-sealed class Screens(val route : String) {
-    object Home : Screens("home_route")
-    object Search : Screens("search_route")
-    object Favorites : Screens("favorite_route")
-    object History : Screens("history_route")
-}
 
 class MainActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val sharedPref = applicationContext.getSharedPreferences("preference_file_key", MODE_PRIVATE)
-        val defaultDatabaseKey = "default_database"
-        val defaultDatabaseValue = "dictionary.db"
+        val sharedPref = applicationContext.getSharedPreferences(getString(R.string.preference_file_key), MODE_PRIVATE)
+        val defaultDatabaseKey = getString(R.string.default_database)
+        val selectedLanguageKey = getString(R.string.selected_language)
+        var defaultLanguageValue = "en"
+        var defaultDatabaseValue = "dictionary.db"
+        var selectedLanguage = sharedPref.getString(selectedLanguageKey, "UNSET") as String
+        val currentLocale = Locale.getDefault().language
+        // On first run if the current locale is one of supported language then use it for
+        // better onboarding experience. Example french users on start will have french selected.
+        // Current locale might be fr but user might have selected english. In that case check for
+        // preference to be UNSET
+        if (selectedLanguage == "UNSET") {
+            if (currentLocale.startsWith("fr", ignoreCase = true)) {
+                defaultLanguageValue = currentLocale
+                defaultDatabaseValue = "dictionary_fr.db"
+            } else if (currentLocale.startsWith("de", ignoreCase = true)) {
+                defaultLanguageValue = currentLocale
+                defaultDatabaseValue = "dictionary_de.db"
+            } else if (currentLocale.startsWith("pl", ignoreCase = true)) {
+                defaultLanguageValue = currentLocale
+                defaultDatabaseValue = "dictionary_pl.db"
+            }
+            // Set values here so that
+            with(sharedPref.edit()) {
+                putString(defaultDatabaseKey, defaultDatabaseValue)
+                putString(selectedLanguageKey, defaultLanguageValue)
+                apply()
+                commit()
+            }
+        }
+        selectedLanguage = sharedPref.getString(selectedLanguageKey, defaultLanguageValue) as String
         val databaseName = sharedPref.getString(defaultDatabaseKey, defaultDatabaseValue) as String
         val packageDataDirectory = Environment.getDataDirectory().absolutePath + "/data/" + packageName
         val file = File("$packageDataDirectory/databases/$databaseName")
+        createNotificationChannel()
+        requestNotificationPermission()
         setContent {MainScreen()}
     }
-}
-data class BottomNavigationItem(
-    val label : String = "",
-    val icon : ImageVector = Icons.Filled.Home,
-    val route : String = ""
-) {
-
-    //function to get the list of bottomNavigationItems
-    fun bottomNavigationItems() : List<BottomNavigationItem> {
-        return listOf(
-            BottomNavigationItem(
-                label = "Home",
-                icon = Icons.Filled.Home,
-                route = Screens.Home.route
-            ),
-            BottomNavigationItem(
-                label = "Search",
-                icon = Icons.Filled.Search,
-                route = Screens.Search.route
-            ),
-            BottomNavigationItem(
-                label = "Favorites",
-                icon = Icons.Filled.Star,
-                route = Screens.Favorites.route
-            ),
-            BottomNavigationItem(
-                label = "History",
-                icon = Icons.Filled.DateRange,
-                route = Screens.History.route
-            )
-        )
+    override fun onDestroy() {
+        super.onDestroy()
+        applicationContext.cacheDir.deleteRecursively() // Delete cache on exit
     }
+    private fun requestNotificationPermission() {
+        val notificationRequestCode = 11
+        val notificationManager: NotificationManager= getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= 32 && !notificationManager.areNotificationsEnabled()) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationRequestCode)
+        }
+    }
+    private fun createNotificationChannel() {
+        val name = getString(R.string.channel_name)
+        val descriptionText = getString(R.string.channel_description)
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        val channel = NotificationChannel("Dictionary", name, importance)
+        channel.description = descriptionText
+        channel.setShowBadge(false)
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
@@ -144,8 +153,6 @@ fun MainScreen() {
     var expanded by remember { mutableStateOf(false) }
     var soundOn by remember { mutableStateOf(false) }
     val activity = LocalContext.current
-    //CreateNotificationChannel()
-    //RequestNotificationPermission()
     MaterialTheme {
         Scaffold(
             topBar = {
@@ -169,8 +176,7 @@ fun MainScreen() {
                                     text = { Text(stringResource(R.string.about)) },
                                     onClick = { activity.startActivity(Intent(activity, AboutActivity::class.java)) })
                                 DropdownMenuItem(
-                                    onClick = { LibsBuilder().withActivityTitle(activity.getString(R.string.license_tab_title))
-                                        .withLicenseShown(true).start(activity)},
+                                    onClick = { /*LibrariesContainer()*/}, //todo new libraries activity
                                     text = { Text(stringResource(R.string.license)) })
                                 DropdownMenuItem(
                                     onClick = { activity.startActivity(Intent(activity, HistoryActivity::class.java)) },
@@ -186,7 +192,7 @@ fun MainScreen() {
             bottomBar = {
                 NavigationBar {
                     //getting the list of bottom navigation items for our data class
-                    BottomNavigationItem().bottomNavigationItems().forEachIndexed {index,navigationItem ->
+                    NavigationBar().bottomNavigationItems().forEachIndexed { index, navigationItem ->
                         //iterating all items with their respective indexes
                         NavigationBarItem(
                             selected = index == navigationSelectedItem,
@@ -290,7 +296,7 @@ fun MainScreen() {
                 LocalContext.current.startActivity(Intent(LocalContext.current, MainActivity::class.java))
             }
             composable(Screens.Search.route) {
-
+                LocalContext.current.startActivity(Intent(LocalContext.current, SearchActivity::class.java))
             }
             composable(Screens.History.route) {
                 LocalContext.current.startActivity(Intent(LocalContext.current, HistoryActivity::class.java))
@@ -303,26 +309,6 @@ fun MainScreen() {
         }
 
 
-}
-@Composable
-private fun CreateNotificationChannel() {
-        val name = stringResource(id = R.string.channel_name)
-        val descriptionText = stringResource(id = R.string.channel_description)
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel("Dictionary", name, importance)
-            channel.description = descriptionText
-            channel.setShowBadge(false)
-        val notificationManager = LocalContext.current.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-}
-@Composable
-private fun RequestNotificationPermission() {
-    val notificationRequestCode = 11
-    val context = LocalContext.current
-    val notificationManager = LocalContext.current.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-    if (Build.VERSION.SDK_INT >= 32 && !notificationManager.areNotificationsEnabled()) {
-        ActivityCompat.requestPermissions(context as Activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationRequestCode)
-    }
 }
 @Composable
 private fun InitProgressIndicator() {
@@ -369,10 +355,7 @@ fun InitializeLanguageMenu(modifier : Modifier) {
             singleLine = true,
             label = { Text("Languages") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageMenuExpanded.value) },
-            colors = ExposedDropdownMenuDefaults.textFieldColors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                focusedContainerColor = MaterialTheme.colorScheme.inversePrimary
-            )
+            colors = ExposedDropdownMenuDefaults.textFieldColors(unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer, focusedContainerColor = MaterialTheme.colorScheme.inversePrimary)
         )
         ExposedDropdownMenu(
             expanded = languageMenuExpanded.value,
@@ -391,4 +374,3 @@ fun InitializeLanguageMenu(modifier : Modifier) {
         }
     }
 }
-
